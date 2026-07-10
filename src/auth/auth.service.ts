@@ -8,12 +8,15 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
+import { LogsService } from 'src/logs/logs.service';
+import { Request } from 'express';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly logsService: LogsService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -50,7 +53,13 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, request: Request) {
+    const ip = request.ip ?? request.socket.remoteAddress;
+    const userAgentHeader = request.headers['user-agent'];
+    const userAgent = Array.isArray(userAgentHeader)
+      ? userAgentHeader.join(', ')
+      : userAgentHeader;
+
     const user = await this.prisma.user.findUnique({
       where: {
         username: loginDto.username,
@@ -58,6 +67,12 @@ export class AuthService {
     });
 
     if (!user) {
+      await this.logsService.createLoginLog({
+        username: loginDto.username,
+        success: false,
+        ip,
+        userAgent,
+      });
       throw new UnauthorizedException('Invalid username or password');
     }
 
@@ -67,8 +82,22 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
+      await this.logsService.createLoginLog({
+        userId: user.id,
+        username: user.username,
+        success: false,
+        ip,
+        userAgent,
+      });
       throw new UnauthorizedException('Invalid username or password');
     }
+    await this.logsService.createLoginLog({
+      userId: user.id,
+      username: user.username,
+      success: true,
+      ip,
+      userAgent,
+    });
 
     const payload = {
       sub: user.id,
