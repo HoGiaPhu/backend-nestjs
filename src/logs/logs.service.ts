@@ -10,4 +10,22 @@ export class LogsService {
       data,
     });
   }
+
+  findAll() {
+    return this.prisma.loginLog.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
 }
