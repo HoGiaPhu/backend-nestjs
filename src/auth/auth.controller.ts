@@ -9,11 +9,14 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/enums';
 import type { JwtPayload } from './strategies/jwt.strategy';
 import { Throttle } from '@nestjs/throttler';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @ApiOperation({ summary: 'Register new account' })
   @Post('register')
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
@@ -25,16 +28,23 @@ export class AuthController {
       ttl: 60_000,
     },
   })
+  @ApiOperation({ summary: 'login, get access token' })
   @Post('login')
   login(@Body() loginDto: LoginDto, @Req() request: Request) {
     return this.authService.login(loginDto, request);
   }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
   //12.User can only view their own information.
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getProfile(@Req() request: Request & { user: JwtPayload }) {
     return this.authService.getProfile(request.user.sub);
   }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check Admin role access' })
   //14. Configure Roles Guard to check access permissions
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
