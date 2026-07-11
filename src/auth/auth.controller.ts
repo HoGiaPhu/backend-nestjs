@@ -22,13 +22,13 @@ export class AuthController {
   login(@Body() loginDto: LoginDto, @Req() request: Request) {
     return this.authService.login(loginDto, request);
   }
-
+  //12.User can only view their own information.
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getProfile(@Req() request: Request & { user: JwtPayload }) {
     return this.authService.getProfile(request.user.sub);
   }
-
+  //14. Configure Roles Guard to check access permissions
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Get('admin-check')
