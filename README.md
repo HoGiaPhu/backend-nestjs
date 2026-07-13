@@ -1,98 +1,161 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS Authentication API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+REST API xác thực và phân quyền xây dựng bằng NestJS, Prisma và PostgreSQL.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Các yêu cầu chức năng
 
-## Description
+- Đăng ký tài khoản bằng `username` và `password`
+- Mã hóa mật khẩu bằng bcrypt trước khi lưu vào cơ sở dữ liệu
+- Đăng nhập, xác thực thông tin và trả về JWT access token
+- Lấy thông tin của người dùng đang đăng nhập
+- Phân quyền `ADMIN` và `USER`
+- ADMIN xem danh sách người dùng
+- Ghi lại lịch sử đăng nhập thành công/thất bại, IP và User-Agent
+- ADMIN xem lịch sử đăng nhập
+- Giới hạn API đăng nhập: 5 lần/phút/IP
+- ValidationPipe và Exception Filter dùng toàn cục
+- Swagger UI để mô tả và kiểm tra API
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Các công nghệ đã sử dụng
 
-## Project setup
+- Node.js
+- NestJS
+- TypeScript
+- PostgreSQL
+- Prisma ORM
+- JWT và Passport
+- bcrypt
+- class-validator, class-transformer
+- Swagger
 
-```bash
-$ npm install
-```
+## Yêu cầu môi trường
 
-## Compile and run the project
+Trước khi chạy dự án, máy cần cài:
 
-```bash
-# development
-$ npm run start
+- Node.js 20 trở lên
+- npm
+- PostgreSQL
+- pgAdmin
 
-# watch mode
-$ npm run start:dev
+## Cài đặt
 
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
+Clone source code và đi vào thư mục dự án:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+git clone <repo-url>
+cd backend-nestjs
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Cài đặt dependencies:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm install
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Tạo file `.env` tại thư mục gốc của dự án:
 
-## Resources
+```env
+DATABASE_URL="postgresql://<postgres_username>:<postgres_password>@localhost:5432/nest_auth_db?schema=public"
 
-Check out a few resources that may come in handy when working with NestJS:
+JWT_SECRET="<jwt_secret>"
+JWT_EXPIRES_IN="1d"
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+PORT=3000
+```
 
-## Support
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Khởi tạo cơ sở dữ liệu
 
-## Stay in touch
+Tạo database PostgreSQL có tên `nest_auth_db`.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Chạy migration để Prisma tạo các bảng trong file `prisma/schema.prisma`:
 
-## License
+```bash
+npx prisma migrate dev --name init
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Generate Prisma Client:
+
+```bash
+npx prisma generate
+```
+
+Có thể mở Prisma Studio để xem dữ liệu trực quan hoặc xem trong pgAdmin:
+
+```bash
+npx prisma studio
+```
+
+## Chạy dự án
+
+Chạy development:
+
+```bash
+npm run start:dev
+```
+
+API mặc định chạy tại:
+
+```text
+http://localhost:3000
+```
+
+Build project:
+
+```bash
+npm run build
+```
+
+Chạy bản đã build:
+
+```bash
+npm run start:prod
+```
+
+## Swagger API Documentation
+
+Sau khi ứng dụng đã chạy, truy cập Swagger UI tại:
+
+```text
+http://localhost:3000/api/docs
+```
+
+Các API chính gồm:
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /auth/me`
+- `GET /auth/admin-check`
+- `GET /users`
+- `GET /logs`
+
+## Scripts
+
+| Lệnh | Mô tả |
+| --- | --- |
+| `npm run start` | Khởi động ứng dụng |
+| `npm run start:dev` | Khởi động ở chế độ theo dõi thay đổi mã nguồn |
+| `npm run build` | Build project |
+| `npm run start:prod` | Chạy bản đã build |
+| `npm run lint` | Kiểm tra và tự sửa một số lỗi lint |
+
+## Phân quyền
+
+| Role | Quyền |
+| --- | --- |
+| `USER` | Xem thông tin của chính mình qua `GET /auth/me` |
+| `ADMIN` | Xem danh sách người dùng và lịch sử đăng nhập |
+
+## Cấu trúc thư mục
+
+```text
+src/
+  auth/       # Đăng ký, đăng nhập và JWT
+  users/      # API danh sách người dùng
+  logs/       # Ghi và xem lịch sử đăng nhập
+  roles/      # Phân quyền
+  common/     # Guards, decorators, filters
+  prisma/     # PrismaService và PrismaModule
+prisma/
+  schema.prisma
+```
