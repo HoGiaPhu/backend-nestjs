@@ -18,10 +18,11 @@ import { LogsModule } from 'src/logs/logs.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService): JwtModuleOptions => ({
-        secret: configService.get<string>('JWT_SECRET') ?? 'nestjs_auth_secret',
+        secret: configService.getOrThrow<string>('jwt.secret'),
         signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ??
-            '1d') as NonNullable<JwtModuleOptions['signOptions']>['expiresIn'],
+          expiresIn: configService.getOrThrow<string>(
+            'jwt.expiresIn',
+          ) as NonNullable<JwtModuleOptions['signOptions']>['expiresIn'],
         },
       }),
     }),

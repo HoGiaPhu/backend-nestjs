@@ -10,11 +10,15 @@ import { RolesModule } from './roles/roles.module';
 import { CommonModule } from './common/common.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { appConfig } from './config/app.config';
+import { databaseConfig } from './config/database.config';
+import { jwtConfig } from './config/jwt.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [appConfig, databaseConfig, jwtConfig],
     }),
     ThrottlerModule.forRoot([
       {
