@@ -1,15 +1,25 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 import { LogsService } from 'src/logs/logs.service';
 import { Request } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { Role } from 'generated/prisma/enums';
+import { JwtPayload } from './strategies/jwt.strategy';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { MailService } from 'src/mail/mail.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { create } from 'node:domain';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -17,12 +27,164 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly logsService: LogsService,
+    private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
-  async register(registerDto: RegisterDto) {
-    const existingUser = await this.prisma.user.findUnique({
+  async getToken(userId: number, username: string, role: Role) {
+    const payload = {
+      sub: userId,
+      username,
+      role,
+    };
+
+    const refreshPayload = {
+      ...payload,
+      jti: randomUUID(),
+    };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload),
+      this.jwtService.signAsync(refreshPayload, {
+        secret: this.configService.getOrThrow<string>('jwt.refreshSecret'),
+        expiresIn: this.configService.getOrThrow<string>(
+          'jwt.refreshExpiresIn',
+        ) as NonNullable<JwtModuleOptions['signOptions']>['expiresIn'],
+      }),
+    ]);
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  private async updateRefreshToken(userId: number, refreshToken: string) {
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+    await this.prisma.user.update({
       where: {
-        username: registerDto.username,
+        id: userId,
+      },
+      data: {
+        refreshTokenHash,
+      },
+    });
+  }
+
+  async refreshToken(refreshToken: string) {
+    let payload: JwtPayload;
+
+    try {
+      payload = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
+        secret: this.configService.getOrThrow<string>('jwt.refreshSecret'),
+      });
+    } catch {
+      throw new UnauthorizedException('invalod or expired refresh token');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: payload.sub,
+      },
+    });
+
+    if (!user || !user.refreshTokenHash) {
+      throw new UnauthorizedException('invalod or expired refresh token');
+    }
+    const isRefreshTokenvalid = await bcrypt.compare(
+      refreshToken,
+      user.refreshTokenHash,
+    );
+
+    if (!isRefreshTokenvalid) {
+      throw new UnauthorizedException('invalod or expired refresh token');
+    }
+
+    const tokens = await this.getToken(user.id, user.username, user.role);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    return tokens;
+  }
+
+  private hashPasswordResetToken(resetToken: string) {
+    return createHash('sha256').update(resetToken).digest('hex');
+  }
+
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: forgotPasswordDto.email,
+      },
+    });
+
+    if (user) {
+      const resetToken = randomBytes(32).toString('hex');
+      const passwordResetTokenHash = this.hashPasswordResetToken(resetToken);
+      const passwordResetExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await this.prisma.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          passwordResetTokenHash,
+          passwordResetExpiresAt,
+        },
+      });
+
+      await this.mailService.sendPasswordResetEmail(user.email, resetToken);
+    }
+    return {
+      message: 'If email exits, the passworl reset will be send for u',
+    };
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const passwordResetTokenHash = this.hashPasswordResetToken(
+      resetPasswordDto.token,
+    );
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        passwordResetTokenHash,
+        passwordResetExpiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    const hashedNewPassword = await bcrypt.hash(
+      resetPasswordDto.newPassword,
+      10,
+    );
+
+    await this.prisma.user.update({
+      where: {
+        id: user.id,
+      },
+
+      data: {
+        password: hashedNewPassword,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
+        refreshTokenHash: null,
+      },
+    });
+
+    return {
+      message: 'Password reset successfully. Please login again.',
+    };
+  }
+
+  async register(registerDto: RegisterDto) {
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ username: registerDto.username }, { email: registerDto.email }],
       },
     });
 
@@ -35,11 +197,13 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         username: registerDto.username,
+        email: registerDto.email,
         password: hashedPassword,
         name: registerDto.name,
       },
       select: {
         id: true,
+        email: true,
         username: true,
         name: true,
         role: true,
@@ -99,23 +263,79 @@ export class AuthService {
       userAgent,
     });
 
-    const payload = {
-      sub: user.id,
-      username: user.username,
-      role: user.role,
-    };
+    const { accessToken, refreshToken } = await this.getToken(
+      user.id,
+      user.username,
+      user.role,
+    );
 
-    const accessToken = await this.jwtService.signAsync(payload);
+    await this.updateRefreshToken(user.id, refreshToken);
 
     return {
       message: 'Login successfully',
       accessToken,
+      refreshToken,
       user: {
         id: user.id,
         username: user.username,
         name: user.name,
         role: user.role,
       },
+    };
+  }
+
+  async logout(userId: number) {
+    await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        refreshTokenHash: null,
+      },
+    });
+
+    return {
+      message: 'Logout successfull :D',
+    };
+  }
+
+  async changePassword(userId: number, changePasswordDto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid user');
+    }
+
+    const isOldPasswordValid = await bcrypt.compare(
+      changePasswordDto.oldPassword,
+      user.password,
+    );
+
+    if (!isOldPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect ');
+    }
+
+    const hashedNewPassword = await bcrypt.hash(
+      changePasswordDto.newPassword,
+      10,
+    );
+
+    await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        password: hashedNewPassword,
+        refreshTokenHash: null,
+      },
+    });
+
+    return {
+      message: 'Password changed successfull. Login again :D',
     };
   }
 

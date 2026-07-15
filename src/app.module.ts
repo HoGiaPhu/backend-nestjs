@@ -13,12 +13,13 @@ import { APP_GUARD } from '@nestjs/core';
 import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
+import { MailConfig } from './config/mail.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig],
+      load: [appConfig, databaseConfig, jwtConfig, MailConfig],
     }),
     ThrottlerModule.forRoot([
       {

@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -10,6 +20,10 @@ import { Role } from '../../generated/prisma/enums';
 import type { JwtPayload } from './strategies/jwt.strategy';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -32,6 +46,48 @@ export class AuthController {
   @Post('login')
   login(@Body() loginDto: LoginDto, @Req() request: Request) {
     return this.authService.login(loginDto, request);
+  }
+
+  @ApiOperation({ summary: 'refresh access tokens' })
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh')
+  refresh(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refreshToken(refreshTokenDto.refreshToken);
+  }
+
+  @ApiOperation({ summary: 'forgot password for user' })
+  @HttpCode(HttpStatus.OK)
+  @Post('forgot-password')
+  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  @ApiOperation({ summary: 'Reset password for user ' })
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  resetPassword(@Body() resetPassword: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPassword);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Login and delete token' })
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('Logout')
+  logout(@Req() request: Request & { user: JwtPayload }) {
+    return this.authService.logout(request.user.sub);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'change pass word' })
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Patch('change-password')
+  changePassword(
+    @Req() request: Request & { user: JwtPayload },
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(request.user.sub, changePasswordDto);
   }
 
   @ApiBearerAuth()
