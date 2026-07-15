@@ -18,7 +18,6 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { MailService } from 'src/mail/mail.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { create } from 'node:domain';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
@@ -112,9 +111,11 @@ export class AuthService {
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const email = forgotPasswordDto.email.trim().toLowerCase();
+
     const user = await this.prisma.user.findUnique({
       where: {
-        email: forgotPasswordDto.email,
+        email,
       },
     });
 
@@ -182,9 +183,11 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
+    const email = registerDto.email.trim().toLowerCase();
+
     const existingUser = await this.prisma.user.findFirst({
       where: {
-        OR: [{ username: registerDto.username }, { email: registerDto.email }],
+        OR: [{ username: registerDto.username }, { email }],
       },
     });
 
@@ -197,7 +200,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         username: registerDto.username,
-        email: registerDto.email,
+        email,
         password: hashedPassword,
         name: registerDto.name,
       },
@@ -218,6 +221,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto, request: Request) {
+    const email = loginDto.email.trim().toLowerCase();
     const ip = request.ip ?? request.socket.remoteAddress;
     const userAgentHeader = request.headers['user-agent'];
     const userAgent = Array.isArray(userAgentHeader)
@@ -226,18 +230,18 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: {
-        username: loginDto.username,
+        email,
       },
     });
 
     if (!user) {
       await this.logsService.createLoginLog({
-        username: loginDto.username,
+        email,
         success: false,
         ip,
         userAgent,
       });
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -249,15 +253,17 @@ export class AuthService {
       await this.logsService.createLoginLog({
         userId: user.id,
         username: user.username,
+        email: user.email,
         success: false,
         ip,
         userAgent,
       });
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid email or password');
     }
     await this.logsService.createLoginLog({
       userId: user.id,
       username: user.username,
+      email: user.email,
       success: true,
       ip,
       userAgent,
@@ -278,6 +284,7 @@ export class AuthService {
       user: {
         id: user.id,
         username: user.username,
+        email: user.email,
         name: user.name,
         role: user.role,
       },
@@ -347,7 +354,12 @@ export class AuthService {
       select: {
         id: true,
         username: true,
+        email: true,
         name: true,
+        address: true,
+        cccd: true,
+        gender: true,
+        phoneNumber: true,
         role: true,
         createdAt: true,
         updatedAt: true,

@@ -20,12 +20,21 @@ enum Role {
   USER
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
 model User {
   id                     Int        @id @default(autoincrement())
   username               String     @unique
-  email                  String    @unique
+  email                  String     @unique
   password               String
   name                   String?
+  address                String?
+  cccd                   String?    @unique
+  gender                 Gender?
+  phoneNumber            String?    @unique
   role                   Role       @default(USER)
   loginLogs              LoginLog[]
   refreshTokenHash       String?
@@ -39,6 +48,7 @@ model LoginLog {
   id        Int      @id @default(autoincrement())
   userId    Int?
   username  String?
+  email     String?
   success   Boolean
   ip        String?
   userAgent String?
