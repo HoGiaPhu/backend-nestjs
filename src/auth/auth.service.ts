@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -88,9 +89,18 @@ export class AuthService {
       },
     });
 
-    if (!user || !user.refreshTokenHash) {
+    if (!user || user.deletedAt) {
       throw new UnauthorizedException('invalod or expired refresh token');
     }
+
+    if (user.isLocked) {
+      throw new ForbiddenException('Account is locked');
+    }
+
+    if (!user.refreshTokenHash) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
     const isRefreshTokenvalid = await bcrypt.compare(
       refreshToken,
       user.refreshTokenHash,
@@ -119,7 +129,7 @@ export class AuthService {
       },
     });
 
-    if (user) {
+    if (user && !user.deletedAt) {
       const resetToken = randomBytes(32).toString('hex');
       const passwordResetTokenHash = this.hashPasswordResetToken(resetToken);
       const passwordResetExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -149,6 +159,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         passwordResetTokenHash,
+        deletedAt: null,
         passwordResetExpiresAt: {
           gt: new Date(),
         },
@@ -244,6 +255,19 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (user.deletedAt) {
+      await this.logsService.createLoginLog({
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        success: false,
+        ip,
+        userAgent,
+      });
+
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
     const isPasswordValid = await bcrypt.compare(
       loginDto.password,
       user.password,
@@ -260,6 +284,20 @@ export class AuthService {
       });
       throw new UnauthorizedException('Invalid email or password');
     }
+
+    if (user.isLocked) {
+      await this.logsService.createLoginLog({
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        success: false,
+        ip,
+        userAgent,
+      });
+
+      throw new ForbiddenException('Account locked');
+    }
+
     await this.logsService.createLoginLog({
       userId: user.id,
       username: user.username,
