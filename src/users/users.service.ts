@@ -6,10 +6,68 @@ import {
 } from '@nestjs/common';
 import { UpdateProfileDto } from 'src/users/dto/update-profile.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AssignRoleDto } from 'src/roles/dto/assign-role.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async assignRole(
+    adminId: number,
+    userId: number,
+    assignRoleDto: AssignRoleDto,
+  ) {
+    if (adminId === userId) {
+      throw new BadRequestException('admin cant change their role');
+    }
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('user not found');
+    }
+
+    const appRole = await this.prisma.appRole.findUnique({
+      where: {
+        id: assignRoleDto.roleId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!appRole) {
+      throw new NotFoundException('app role not found');
+    }
+
+    return this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        appRoleId: appRole.id,
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        appRole: {
+          select: {
+            id: true,
+            name: true,
+            permissions: true,
+          },
+        },
+      },
+    });
+  }
 
   findAll() {
     return this.prisma.user.findMany({

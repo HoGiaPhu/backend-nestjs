@@ -18,11 +18,28 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UpdateProfileDto } from 'src/users/dto/update-profile.dto';
 import type { Request } from 'express';
 import type { JwtPayload } from 'src/auth/strategies/jwt.strategy';
+import { AssignRoleDto } from 'src/roles/dto/assign-role.dto';
+import { PermissionsGuard } from 'src/common/guards/permission.guard';
+import { RequirePermissions } from 'src/common/decorators/permissions.decorator';
+import { PERMISSIONS } from 'src/roles/constants/permissions.constant';
 
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'assign app role for user ' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Patch(':id/role')
+  assignRole(
+    @Req() request: Request & { user: JwtPayload },
+    @Param('id', ParseIntPipe) userId: number,
+    @Body() assignRoleDto: AssignRoleDto,
+  ) {
+    return this.userService.assignRole(request.user.sub, userId, assignRoleDto);
+  }
 
   @ApiBearerAuth()
   @ApiOperation({ summary: 'update user profile' })
@@ -55,8 +72,8 @@ export class UsersController {
 
   @ApiBearerAuth()
   @ApiOperation({ summary: 'admin lock user account' })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(PERMISSIONS.USERS_LOCK)
   @Patch(':id/lock')
   lockUser(
     @Req() request: Request & { user: JwtPayload },

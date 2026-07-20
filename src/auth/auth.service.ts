@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
@@ -206,6 +207,19 @@ export class AuthService {
       throw new ConflictException('User already exists!');
     }
 
+    const defaultUserRole = await this.prisma.appRole.findUnique({
+      where: {
+        name: 'USER',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!defaultUserRole) {
+      throw new InternalServerErrorException('Cant not configyre user role');
+    }
+
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
     const user = await this.prisma.user.create({
@@ -214,6 +228,7 @@ export class AuthService {
         email,
         password: hashedPassword,
         name: registerDto.name,
+        appRoleId: defaultUserRole.id,
       },
       select: {
         id: true,
@@ -222,6 +237,13 @@ export class AuthService {
         name: true,
         role: true,
         createdAt: true,
+        appRole: {
+          select: {
+            id: true,
+            name: true,
+            permissions: true,
+          },
+        },
       },
     });
 

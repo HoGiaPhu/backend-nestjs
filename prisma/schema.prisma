@@ -36,6 +36,8 @@ model User {
   gender                 Gender?
   phoneNumber            String?    @unique
   role                   Role       @default(USER)
+  appRoleId              Int?
+  appRole                AppRole?   @relation(fields: [appRoleId], references: [id], onDelete: SetNull)
   loginLogs              LoginLog[]
   refreshTokenHash       String?
   passwordResetTokenHash String?
@@ -57,4 +59,14 @@ model LoginLog {
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
+}
+
+model AppRole {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  permissions String[] @default([])
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

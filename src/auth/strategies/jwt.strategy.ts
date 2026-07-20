@@ -13,6 +13,7 @@ export type JwtPayload = {
   sub: number;
   username: string;
   role: Role;
+  permissions?: string[];
 };
 
 @Injectable()
@@ -39,6 +40,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         role: true,
         isLocked: true,
         deletedAt: true,
+        appRole: {
+          select: {
+            permissions: true,
+          },
+        },
       },
     });
 
@@ -54,6 +60,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       sub: user.id,
       username: user.username,
       role: user.role,
+      permissions: user.appRole?.permissions ?? [],
     };
   }
 }
