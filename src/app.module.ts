@@ -14,6 +14,7 @@ import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
 import { MailConfig } from './config/mail.config';
+import { PostsModule } from './posts/posts.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { MailConfig } from './config/mail.config';
     LogsModule,
     RolesModule,
     CommonModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -39,6 +39,7 @@ model User {
   appRoleId              Int?
   appRole                AppRole?   @relation(fields: [appRoleId], references: [id], onDelete: SetNull)
   loginLogs              LoginLog[]
+  posts                  Post[]
   refreshTokenHash       String?
   passwordResetTokenHash String?
   passwordResetExpiresAt DateTime?
@@ -69,4 +70,14 @@ model AppRole {
   users       User[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Post {
+  id       Int      @id @default(autoincrement())
+  title    String
+  content  String
+  authorId Int
+  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
 }
