@@ -12,12 +12,14 @@ import {
   ParseFilePipeBuilder,
   UploadedFile,
   UseInterceptors,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { PostsService } from './posts.service';
@@ -26,6 +28,7 @@ import { JwtPayload } from 'src/auth/strategies/jwt.strategy';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ShearchPostDto } from './dto/shearch-post.dto';
 
 @ApiTags('Posts')
 @Controller('posts')
@@ -81,13 +84,19 @@ export class PostsController {
   }
 
   @ApiOperation({ summary: 'get all posts' })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    example: 'shearch input',
+    description: 'Shearch keyword in post title',
+  })
   @Get()
-  findAll() {
-    return this.postsService.findAll();
+  findAll(@Query() shearchPostDto: ShearchPostDto) {
+    return this.postsService.findAll(shearchPostDto);
   }
 
   @ApiOperation({
-    summary: 'Get url image post'
+    summary: 'Get url image post',
   })
   @Get(':id/image-url')
   getImageUrl(@Param('id', ParseIntPipe) postId: number) {

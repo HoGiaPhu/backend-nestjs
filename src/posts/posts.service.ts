@@ -8,6 +8,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { S3Service } from 'src/s3/s3.service';
+import { ShearchPostDto } from './dto/shearch-post.dto';
+import { title } from 'process';
+import { contain } from 'supertest/lib/cookies';
+import { contains } from 'class-validator';
 
 @Injectable()
 export class PostsService {
@@ -166,8 +170,17 @@ export class PostsService {
     };
   }
 
-  findAll() {
+  findAll(shearchPostDto: ShearchPostDto) {
+    const keyword = shearchPostDto.q?.trim();
     return this.prisma.post.findMany({
+      where: keyword
+        ? {
+            title: {
+              contains: keyword,
+              mode: 'insensitive',
+            },
+          }
+        : undefined,
       orderBy: {
         createAt: 'desc',
       },
