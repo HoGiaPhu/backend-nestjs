@@ -11,6 +11,7 @@ import { S3Service } from 'src/s3/s3.service';
 import { ShearchPostDto } from './dto/shearch-post.dto';
 import { LogsService } from 'src/logs/logs.service';
 import { PostAuditAction } from 'generated/prisma/enums';
+import { title } from 'process';
 
 @Injectable()
 export class PostsService {
@@ -171,6 +172,7 @@ export class PostsService {
   }
 
   findAll(shearchPostDto: ShearchPostDto) {
+    const sortOrder = shearchPostDto.sortOrder ?? 'desc';
     const keyword = shearchPostDto.q?.trim();
     return this.prisma.post.findMany({
       where: keyword
@@ -181,9 +183,14 @@ export class PostsService {
             },
           }
         : undefined,
-      orderBy: {
-        createAt: 'desc',
-      },
+      orderBy:
+        shearchPostDto.sortBy === 'title'
+          ? {
+              title: sortOrder,
+            }
+          : {
+              createAt: sortOrder,
+            },
       include: {
         author: {
           select: {

@@ -90,6 +90,18 @@ export class PostsController {
     example: 'shearch input',
     description: 'Shearch keyword in post title',
   })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    enum: ['createAt', 'title'],
+    example: 'createAt',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['asc', 'desc'],
+    example: 'desc',
+  })
   @Get()
   findAll(@Query() shearchPostDto: ShearchPostDto) {
     return this.postsService.findAll(shearchPostDto);
