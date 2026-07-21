@@ -17,12 +17,13 @@ import { MailConfig } from './config/mail.config';
 import { PostsModule } from './posts/posts.module';
 import { CategoriesModule } from './categories/categories.module';
 import { TagsModule } from './tags/tags.module';
+import { s3Config } from './config/s3.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, MailConfig],
+      load: [appConfig, databaseConfig, jwtConfig, MailConfig, s3Config],
     }),
     ThrottlerModule.forRoot([
       {

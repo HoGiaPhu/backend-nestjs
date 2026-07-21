@@ -7,11 +7,14 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { connect } from 'node:http2';
+import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3Service: S3Service,
+  ) {}
 
   private async sureCategoryExist(categoryId: number) {
     const category = await this.prisma.category.findUnique({
@@ -88,6 +91,79 @@ export class PostsService {
         },
       },
     });
+  }
+
+  async uploadImage(userId: number, postId: number, file: Express.Multer.File) {
+    const post = await this.prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      select: {
+        authorId: true,
+        imageKey: true,
+      },
+    });
+
+    if (!post) {
+      throw new NotFoundException('Cant find post');
+    }
+
+    if (post.authorId !== userId) {
+      throw new ForbiddenException(' you only can upload image for your post');
+    }
+
+    const newImageKey = await this.s3Service.uploadPostImage(file);
+
+    let updatedPost;
+
+    try {
+      updatedPost = await this.prisma.post.update({
+        where: {
+          id: postId,
+        },
+        data: {
+          imageKey: newImageKey,
+        },
+      });
+    } catch (error) {
+      await this.s3Service.deletePostImage(newImageKey);
+      throw error;
+    }
+
+    if (post.imageKey) {
+      await this.s3Service.deletePostImage(post.imageKey);
+    }
+
+    return {
+      message: 'Post image upload done',
+      imageKey: updatedPost.imageKey,
+    };
+  }
+
+  async getImageUrl(postId: number) {
+    const post = await this.prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      select: {
+        imageKey: true,
+      },
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    if (!post.imageKey) {
+      throw new NotFoundException('Post does not hav image');
+    }
+
+    const imageUrl = await this.s3Service.getPostImageUrl(post.imageKey);
+
+    return {
+      imageUrl,
+      expiresIn: 3600,
+    };
   }
 
   findAll() {
@@ -212,6 +288,7 @@ export class PostsService {
       },
       select: {
         authorId: true,
+        imageKey: true,
       },
     });
 
@@ -228,6 +305,10 @@ export class PostsService {
         id: postId,
       },
     });
+
+    if (post.imageKey) {
+      await this.s3Service.deletePostImage(post.imageKey);
+    }
 
     return {
       message: 'Post deleted successfully',
