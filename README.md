@@ -15,6 +15,18 @@ REST API xác thực và phân quyền xây dựng bằng NestJS, Prisma và Pos
 - Giới hạn API đăng nhập: 5 lần/phút/IP
 - ValidationPipe và Exception Filter dùng toàn cục
 - Swagger UI để mô tả và kiểm tra API
+- Đăng xuất, refresh token, đổi mật khẩu, quên mật khẩu và reset mật khẩu qua email
+- Cập nhật thông tin cá nhân: họ tên, địa chỉ, CCCD, giới tính và số điện thoại
+- ADMIN xem chi tiết người dùng, khóa/mở khóa tài khoản và soft delete người dùng
+- Role và Permission theo mô hình RBAC đơn giản: tạo role, gán role và kiểm tra permission
+- Quản lý bài viết: tạo, xem, cập nhật và xóa; USER chỉ sửa/xóa bài của chính mình
+- Quản lý danh mục bài viết
+- Quản lý bài viết theo tag
+- Upload ảnh bài viết lên Amazon S3 private và tạo signed URL tạm thời để xem ảnh
+- Tìm kiếm bài viết theo `title` bằng query `q`
+- Sắp xếp bài viết theo `title` hoặc `createAt`, với `asc` hoặc `desc`
+- Audit log ghi nhận ai chỉnh sửa bài viết và thời điểm chỉnh sửa
+- API trả về mã lỗi và cấu trúc lỗi thống nhất: `400`, `401`, `403`, `404`, `409`
 
 ## Các công nghệ đã sử dụng
 
@@ -52,17 +64,7 @@ Cài đặt dependencies:
 npm install
 ```
 
-Tạo file `.env` tại thư mục gốc của dự án:
-
-```env
-DATABASE_URL="postgresql://<postgres_username>:<postgres_password>@localhost:5432/nest_auth_db?schema=public"
-
-JWT_SECRET="<jwt_secret>"
-JWT_EXPIRES_IN="1d"
-
-PORT=3000
-```
-
+Tạo file `.env` tại thư mục gốc của dự án, cấu trúc file tham khảo `.env.expamle`:
 
 ## Khởi tạo cơ sở dữ liệu
 
@@ -128,6 +130,36 @@ Các API chính gồm:
 - `GET /auth/admin-check`
 - `GET /users`
 - `GET /logs`
+- `POST /auth/refresh`
+- `POST /auth/Logout`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
+- `PATCH /auth/change-password`
+- `PATCH /users/me`
+- `GET /users/:id`
+- `PATCH /users/:id/role`
+- `PATCH /users/:id/lock`
+- `PATCH /users/:id/unlock`
+- `DELETE /users/:id`
+- `POST /roles`
+- `GET /roles`
+- `PATCH /roles/:id/permissions`
+- `GET /logs/post-audits`
+- `GET /categories`
+- `POST /categories`
+- `PATCH /categories/:id`
+- `DELETE /categories/:id`
+- `GET /tags`
+- `POST /tags`
+- `PATCH /tags/:id`
+- `DELETE /tags/:id`
+- `POST /posts`
+- `GET /posts?q=<keyword>&sortBy=<createAt|title>&sortOrder=<asc|desc>`
+- `GET /posts/:id`
+- `PATCH /posts/:id`
+- `DELETE /posts/:id`
+- `POST /posts/:id/image`
+- `GET /posts/:id/image-url`
 
 ## Scripts
 
