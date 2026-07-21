@@ -4,7 +4,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Role } from 'generated/prisma/enums';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Logs')
 @Controller('logs')
@@ -16,5 +16,14 @@ export class LogsController {
   @Get()
   findAll() {
     return this.logService.findAll();
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'get audit logs admin' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('post-audits')
+  findAllPostAudits() {
+    return this.logService.findAllPostAuditLogs();
   }
 }

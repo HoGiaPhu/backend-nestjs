@@ -9,15 +9,15 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { S3Service } from 'src/s3/s3.service';
 import { ShearchPostDto } from './dto/shearch-post.dto';
-import { title } from 'process';
-import { contain } from 'supertest/lib/cookies';
-import { contains } from 'class-validator';
+import { LogsService } from 'src/logs/logs.service';
+import { PostAuditAction } from 'generated/prisma/enums';
 
 @Injectable()
 export class PostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3Service: S3Service,
+    private readonly logsService: LogsService,
   ) {}
 
   private async sureCategoryExist(categoryId: number) {
@@ -278,7 +278,7 @@ export class PostsService {
       await this.sureTagsExist(updatePostDto.tagIds);
     }
 
-    return this.prisma.post.update({
+    const updatedPost = await this.prisma.post.update({
       where: {
         id: postId,
       },
@@ -292,6 +292,15 @@ export class PostsService {
             : undefined,
       },
     });
+
+    await this.logsService.createPostAuditLog({
+      postId: updatedPost.id,
+      postTitle: updatedPost.title,
+      actorId: userId,
+      action: PostAuditAction.UPDATE,
+    });
+
+    return updatedPost;
   }
 
   async remove(userId: number, postId: number) {

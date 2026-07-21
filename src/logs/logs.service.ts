@@ -11,6 +11,30 @@ export class LogsService {
     });
   }
 
+  createPostAuditLog(data: Prisma.PostAuditLogUncheckedCreateInput) {
+    return this.prisma.postAuditLog.create({
+      data,
+    });
+  }
+
+  findAllPostAuditLogs() {
+    return this.prisma.postAuditLog.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        actor: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
   findAll() {
     return this.prisma.loginLog.findMany({
       orderBy: {

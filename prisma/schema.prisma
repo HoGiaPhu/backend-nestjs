@@ -25,28 +25,35 @@ enum Gender {
   FEMALE
 }
 
+enum PostAuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
 model User {
-  id                     Int        @id @default(autoincrement())
-  username               String     @unique
-  email                  String     @unique
+  id                     Int            @id @default(autoincrement())
+  username               String         @unique
+  email                  String         @unique
   password               String
   name                   String?
   address                String?
-  cccd                   String?    @unique
+  cccd                   String?        @unique
   gender                 Gender?
-  phoneNumber            String?    @unique
-  role                   Role       @default(USER)
+  phoneNumber            String?        @unique
+  role                   Role           @default(USER)
   appRoleId              Int?
-  appRole                AppRole?   @relation(fields: [appRoleId], references: [id], onDelete: SetNull)
+  appRole                AppRole?       @relation(fields: [appRoleId], references: [id], onDelete: SetNull)
   loginLogs              LoginLog[]
   posts                  Post[]
+  postAuditLogs          PostAuditLog[]
   refreshTokenHash       String?
   passwordResetTokenHash String?
   passwordResetExpiresAt DateTime?
-  isLocked               Boolean    @default(false)
+  isLocked               Boolean        @default(false)
   deletedAt              DateTime?
-  createdAt              DateTime   @default(now())
-  updatedAt              DateTime   @updatedAt
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 }
 
 model LoginLog {
@@ -101,4 +108,14 @@ model Tags {
   posts     Post[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model PostAuditLog {
+  id        Int             @id @default(autoincrement())
+  postId    Int
+  postTitle String
+  action    PostAuditAction
+  actorId   Int
+  actor     User            @relation(fields: [actorId], references: [id])
+  createdAt DateTime        @default(now())
 }
