@@ -1,5 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ArrayUnique,
+  IsArray,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreatePostDto {
   @ApiProperty({
@@ -17,4 +26,24 @@ export class CreatePostDto {
   @IsNotEmpty()
   @MaxLength(10000)
   content: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'CategoryId',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  categoryId?: number;
+
+  @ApiPropertyOptional({
+    example: [1, 2],
+    description: 'List of tags',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  tagIds?: number[];
 }

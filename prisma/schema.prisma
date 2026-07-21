@@ -73,11 +73,31 @@ model AppRole {
 }
 
 model Post {
-  id       Int      @id @default(autoincrement())
-  title    String
-  content  String
-  authorId Int
-  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  id         Int       @id @default(autoincrement())
+  title      String
+  content    String
+  authorId   Int
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags       Tags[]
+  createAt   DateTime  @default(now())
+  updateAt   DateTime  @updatedAt
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  posts       Post[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Tags {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
