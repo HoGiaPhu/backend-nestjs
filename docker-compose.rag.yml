@@ -1,0 +1,16 @@
+services:
+  postgres-rag:
+    image: pgvector/pgvector:pg18-trixie
+    container_name: nest-auth-rag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nest_auth_rag_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: sa123
+    ports:
+      - "5433:5432"
+    volumes:
+      - rag_pgdata:/var/lib/postgresql
+
+volumes:
+  rag_pgdata:

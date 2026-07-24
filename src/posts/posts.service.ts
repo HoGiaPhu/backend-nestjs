@@ -11,7 +11,7 @@ import { S3Service } from 'src/s3/s3.service';
 import { ShearchPostDto } from './dto/shearch-post.dto';
 import { LogsService } from 'src/logs/logs.service';
 import { PostAuditAction } from 'generated/prisma/enums';
-import { title } from 'process';
+import { RagService } from 'src/rag/rag.service';
 
 @Injectable()
 export class PostsService {
@@ -19,6 +19,7 @@ export class PostsService {
     private readonly prisma: PrismaService,
     private readonly s3Service: S3Service,
     private readonly logsService: LogsService,
+    private readonly ragService: RagService,
   ) {}
 
   private async sureCategoryExist(categoryId: number) {
@@ -53,6 +54,28 @@ export class PostsService {
     }
   }
 
+  private buildRagContent(post: {
+    title: string;
+    content: string;
+    category: { name: string } | null;
+    tags: { name: string }[];
+  }): string {
+    const categoryText = post.category ? `Category: ${post.category.name}` : '';
+    const tagsText =
+      post.tags.length > 0
+        ? `Tags: ${post.tags.map((tag) => tag.name).join(', ')}`
+        : '';
+
+    return [
+      `Title: ${post.title}`,
+      categoryText,
+      tagsText,
+      `Content: ${post.content}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
   async create(authorId: number, createPostDto: CreatePostDto) {
     if (createPostDto.categoryId !== undefined) {
       await this.sureCategoryExist(createPostDto.categoryId);
@@ -62,7 +85,7 @@ export class PostsService {
       await this.sureTagsExist(createPostDto.tagIds);
     }
 
-    return this.prisma.post.create({
+    const post = await this.prisma.post.create({
       data: {
         title: createPostDto.title.trim(),
         content: createPostDto.content.trim(),
@@ -96,6 +119,40 @@ export class PostsService {
         },
       },
     });
+
+    await this.ragService.indexPost(post.id, this.buildRagContent(post));
+
+    return post;
+  }
+
+  async reindexAllPosts() {
+    const posts = await this.prisma.post.findMany({
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        tags: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+    await this.ragService.clearPostIndexes();
+
+    for (const post of posts) {
+      await this.ragService.indexPost(post.id, this.buildRagContent(post));
+    }
+
+    return {
+      message: 'All post hav been index for rag',
+      totalIndex: posts.length,
+    };
   }
 
   async uploadImage(userId: number, postId: number, file: Express.Multer.File) {
@@ -298,6 +355,18 @@ export class PostsService {
             ? { set: updatePostDto.tagIds.map((id) => ({ id })) }
             : undefined,
       },
+      include: {
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        tags: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
     await this.logsService.createPostAuditLog({
@@ -306,6 +375,11 @@ export class PostsService {
       actorId: userId,
       action: PostAuditAction.UPDATE,
     });
+
+    await this.ragService.indexPost(
+      updatedPost.id,
+      this.buildRagContent(updatedPost),
+    );
 
     return updatedPost;
   }
@@ -334,6 +408,8 @@ export class PostsService {
         id: postId,
       },
     });
+
+    await this.ragService.deletePostIndex(postId);
 
     if (post.imageKey) {
       await this.s3Service.deletePostImage(post.imageKey);

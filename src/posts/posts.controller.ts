@@ -29,6 +29,9 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ShearchPostDto } from './dto/shearch-post.dto';
+import { Role } from 'generated/prisma/enums';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
 
 @ApiTags('Posts')
 @Controller('posts')
@@ -44,6 +47,15 @@ export class PostsController {
     @Body() createPostDto: CreatePostDto,
   ) {
     return this.postsService.create(request.user.sub, createPostDto);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'reindex all post for rag' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post('reindex')
+  reindexAll() {
+    return this.postsService.reindexAllPosts();
   }
 
   @ApiBearerAuth()

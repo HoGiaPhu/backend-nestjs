@@ -18,12 +18,25 @@ import { PostsModule } from './posts/posts.module';
 import { CategoriesModule } from './categories/categories.module';
 import { TagsModule } from './tags/tags.module';
 import { s3Config } from './config/s3.config';
+import { ChatModule } from './chat/chat.module';
+import { aiConfig } from './config/ai.config';
+import { ragConfig } from './config/rag.config';
+import { groqConfig } from './config/groq.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, MailConfig, s3Config],
+      load: [
+        appConfig,
+        databaseConfig,
+        jwtConfig,
+        MailConfig,
+        s3Config,
+        aiConfig,
+        ragConfig,
+        groqConfig,
+      ],
     }),
     ThrottlerModule.forRoot([
       {
@@ -40,6 +53,7 @@ import { s3Config } from './config/s3.config';
     PostsModule,
     CategoriesModule,
     TagsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [
